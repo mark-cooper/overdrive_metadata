@@ -16,16 +16,15 @@ class OverdriveMetadata
     ISBN_AUD = '(sound recording : OverDrive Audio Book)'
     ACCESS   = 'Mode of access: World Wide Web.'
     REQUIRE  = 'Requires OverDrive Media Console'
-    # INV_SUMM = '&lt;p&gt;'
     DISCLAIM = 'Record generated from Overdrive metadata spreadsheet.'
     URL_MSG  = 'Click to download this audiobook.'
     EXC_MSG  = 'Excerpt.'
     DOWN_SH  = 'Downloadable audiobooks.'
 
-    READ_ERR = 'Read error, check file path or try resaving file as .xls (not xml)'
+    READ_ERR = 'Error, close file, check file path or try resaving file as .xls (not xml)'
     TITL_ERR = 'Title field is missing from data row'
-    # TIME_ERR = 'Time data not present for row'
-    # LINK_ERR = 'Invalid or missing link'
+    DATE_ERR = 'Date data not present for row'
+    FIXF_ERR = 'Invalid fixed field created'
 
     # add option for config. file in future 
     HEADERS = {
@@ -62,6 +61,7 @@ class OverdriveMetadata
   		@metadata.each do |row|
     		@records << create_record(row)
   		end
+      @records.compact!
   	end
 
   	def create_record(data)
@@ -74,7 +74,7 @@ class OverdriveMetadata
   		
       date             = data[HEADERS[:date]]
       year             = month = day = ''
-      if date.match(/\d{2}\/\d{2}\/\d{4}/)
+      if date.match(/\d{1,2}\/\d{1,2}\/\d{4}/)
         month, day, year = date.split '/'
       end
       year             = date.match(/\d{4}/).to_s # Fall-back
@@ -95,49 +95,54 @@ class OverdriveMetadata
       ldr[17] = '4'
       ldr[18] = 'a'
       
-      fields = []
-  		fields << make_control_field('001', data[HEADERS[:oclc]]) # oclc no.
-      fields << make_control_field('006', 'm        h        ')
-      fields << make_control_field('007', 'sz usnnnn   ed')
-      fields << make_control_field('007', 'cr nna        ')
-      fields << make_control_field('008', make_fixed_field(year, month, day))
+      begin
+        fields = []
+    		fields << make_control_field('001', data[HEADERS[:oclc]]) # oclc no.
+        fields << make_control_field('006', 'm        h        ')
+        fields << make_control_field('007', 'sz usnnnn   ed')
+        fields << make_control_field('007', 'cr nna        ')
+        fields << make_control_field('008', make_fixed_field(year, month, day))
 
-  		fields << make_data_field('020', ' ', ' ', isbn + ' ' + ISBN_AUD) unless isbn.empty?
-      fields << make_data_field('037', ' ', ' ', 'OverDrive, Inc.', 'b')
-      fields << make_source('JTH')
-  		
-  		fields << make_data_field('100', '1', ' ', author)
-      fields << make_title(title, data[HEADERS[:author]])
-      fields << make_publication(data[HEADERS[:place]], data[HEADERS[:publisher]], year)
-      fields << make_physical(hr, mn)
+    		fields << make_data_field('020', ' ', ' ', isbn + ' ' + ISBN_AUD) unless isbn.empty?
+        fields << make_data_field('037', ' ', ' ', 'OverDrive, Inc.', 'b')
+        fields << make_source('JTH')
+    		
+    		fields << make_data_field('100', '1', ' ', author)
+        fields << make_title(title, data[HEADERS[:author]])
+        fields << make_publication(data[HEADERS[:place]], data[HEADERS[:publisher]], year)
+        fields << make_physical(hr, mn)
 
-      fields << make_data_field('306', ' ', ' ', hr + mn + sc)
-      fields << make_data_field('538', ' ', ' ', ACCESS)
-      fields << make_data_field('538', ' ', ' ', REQUIRE + ' (file size: ' + data[HEADERS[:filesize]] + ' KB).')
-      fields << make_data_field('511', '0', ' ', 'Read by ' + reader + '.') unless reader.empty? 
-      fields << make_data_field('520', ' ', ' ', summary) unless summary.match(/^#+$/)
+        fields << make_data_field('306', ' ', ' ', hr + mn + sc)
+        fields << make_data_field('538', ' ', ' ', ACCESS)
+        fields << make_data_field('538', ' ', ' ', REQUIRE + ' (file size: ' + data[HEADERS[:filesize]] + ' KB).')
+        fields << make_data_field('511', '0', ' ', 'Read by ' + reader + '.') unless reader.empty? 
+        fields << make_data_field('520', ' ', ' ', summary) unless summary.match(/^#+$/)
 
-      fields << make_data_field('500', ' ', ' ', 'Title from: ' + data[HEADERS[:title_src]] + '.')
-      fields << make_data_field('500', ' ', ' ', 'Unabridged.')
-      fields << make_data_field('500', ' ', ' ', 'Duration: ' + hr + ' hr., ' + mn + ' min.')
+        fields << make_data_field('500', ' ', ' ', 'Title from: ' + data[HEADERS[:title_src]] + '.')
+        fields << make_data_field('500', ' ', ' ', 'Unabridged.')
+        fields << make_data_field('500', ' ', ' ', 'Duration: ' + hr + ' hr., ' + mn + ' min.')
 
-      subjects.each { |s| fields << make_subject(@coder.decode(s)) }
-      fields << make_dlc_sh
+        subjects.each { |s| fields << make_subject(@coder.decode(s)) }
+        fields << make_dlc_sh
 
-      added = normalize_author reader
-      fields << make_data_field('700', '1', ' ', added)
+        added = normalize_author reader
+        fields << make_data_field('700', '1', ' ', added)
 
-      fields << make_link(data[HEADERS[:download]], URL_MSG)
-      fields << make_link(data[HEADERS[:excerpt]], EXC_MSG)
-      fields << make_img_link(title, data[HEADERS[:cover]], data[HEADERS[:thumb]])
+        fields << make_link(data[HEADERS[:download]], URL_MSG)
+        fields << make_link(data[HEADERS[:excerpt]], EXC_MSG)
+        fields << make_img_link(title, data[HEADERS[:cover]], data[HEADERS[:thumb]])
 
-      fields << make_data_field('907', ' ', ' ', 'ER')
-      fields << make_data_field('991', ' ', ' ', DISCLAIM)
+        fields << make_data_field('907', ' ', ' ', 'ER')
+        fields << make_data_field('991', ' ', ' ', DISCLAIM)
 
-  		fields.compact! # remove nil fields
-  		fields.each { |f| record.append f } # add fields to record
+    		fields.compact! # remove nil fields
+    		fields.each { |f| record.append f } # add fields to record
 
-  		return record
+    		return record
+      rescue Exception => ex
+        puts 'ERROR: ' + ex.message + ' for: ' + title
+        return nil
+      end
   	end
 
   	def make_control_field(tag, value)
@@ -151,14 +156,17 @@ class OverdriveMetadata
   	end
 
     def make_fixed_field(year, month, day)
-      return nil if year.empty?
+      raise DATE_ERR if year.empty?
       fixed_field = '      s        xxunnnn s           eng d'
-      if month and day
+      unless month.empty? and day.empty?
+        month = '0' + month if month.length == 1
+        day   = '0' + day if day.length == 1
         fixed_field[0..5] = year[2..3] + month + day
         fixed_field[7..10] = year
       else
         fixed_field[7..10] = year
       end
+      raise FIXF_ERR unless fixed_field.length == 40
       return fixed_field
     end
 
