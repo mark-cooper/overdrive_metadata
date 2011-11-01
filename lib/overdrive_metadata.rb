@@ -5,6 +5,7 @@ require 'spreadsheet'
 
 ##
 # Class to generate marc records from Overdrive provided metadata spreadsheet
+# Works for e-audiobooks only at present
 
 class OverdriveMetadata
   	VERSION = '1.0.0'
@@ -23,6 +24,8 @@ class OverdriveMetadata
 
     READ_ERR = 'Read error, check file path or try resaving file as .xls (not xml)'
     TITL_ERR = 'Title field is missing from data row'
+    # TIME_ERR = 'Time data not present for row'
+    # LINK_ERR = 'Invalid or missing link'
 
     # add option for config. file in future 
     HEADERS = {
@@ -81,7 +84,7 @@ class OverdriveMetadata
       author           = normalize_author data[HEADERS[:author]]
       title            = data[HEADERS[:title]]
       reader           = data[HEADERS[:reader]]
-      summary          = data[HEADERS[:summary]]
+      summary          = data[HEADERS[:summary]].gsub(/\s{2}+/, '').strip
       subjects         = data[HEADERS[:subjects]].split ','
 
       # leader - accept hash in future
@@ -188,6 +191,7 @@ class OverdriveMetadata
     end
 
     def make_physical(hours, minutes)
+      return nil if hours.empty? or minutes.empty?
       phys_f = make_data_field('300', ' ', ' ', '1 sound file (ca. ' + hours + ' hr., ' + minutes + ' min.) :')
       append_subfield phys_f, 'b', 'digital'
       return phys_f
@@ -207,12 +211,14 @@ class OverdriveMetadata
     end
 
     def make_link(url, message)
+      return nil if url.empty?
       link_f = make_data_field('856', '4', '0', url)
       append_subfield link_f, 'y', message
       return link_f
     end
 
     def make_img_link(title, cover, thumb)
+      return nil if cover.empty? or thumb.empty?
       img_f = make_data_field('856', '4', '2', cover)
       append_subfield img_f, 'y', "<img class='scl_mwthumb' src='" + thumb + "' alt='Artwork for this title - " + title + "' />"
       return img_f
