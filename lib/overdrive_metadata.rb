@@ -243,7 +243,7 @@ class OverdriveMetadata
     def make_img_link(title, cover, thumb)
       return nil if cover.empty? or thumb.empty?
       img_f = make_data_field('856', '4', '2', cover)
-      append_subfield img_f, 'y', "<img class='scl_mwthumb' src='" + thumb + "' alt='Artwork for this title - " + title + "' />"
+      append_subfield img_f, 'y', "<img class=\"scl_mwthumb\" src=\"#{thumb}\" alt=\"Artwork for this title - #{title}\" />"
       return img_f
     end
 
