@@ -62,12 +62,37 @@ class OverdriveMetadata
     		@records << create_record(row)
   		end
       @records.compact!
+      merge_by_isbn
   	end
+
+    def merge_by_isbn
+      isbns = Hash.new(0)
+      @records.each do |record|
+        isbns[record['020'].value] += 1 if record['020']
+      end
+      isbns.delete_if { |k,v| v < 2 }
+      isbns.keys.each do |isbn|
+        puts isbn
+        rcds = @records.find_all { |r| r['020']['a'] == isbn if r['020'] }
+        puts 'SIZE: ' + rcds.size.to_s
+        raise 'Found invalid number of duplicate records: ' + isbn unless rcds.size == 2
+        file_note = rcds[1].find { |f| f.tag == '500' and f['a'] =~ /OverDrive (WMA|MP3) Audiobook/ }
+        excerpt   = rcds[1].find { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }
+        raise 'Unable to identify format note and excerpt: ' + isbn unless file_note and excerpt
+        rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '500' }, file_note)
+        rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }, excerpt)
+        # rcds[0].append file_note
+        # rcds[0].append excerpt
+        # rcds[0].fields.sort_by! {|f| f.tag.to_i }
+        @records.delete rcds[1]
+      end
+      @records
+    end
 
   	def create_record(data)
   		record = MARC::Record.new
   		
-      oclc             = data[HEADERS[:oclc]].empty? ? 'ovr' + make_id(data[HEADERS[:filesize]]) : 'ocn' + data[HEADERS[:oclc]]
+      oclc             = data[HEADERS[:oclc]].to_s.empty? ? 'ovr' + make_id(data[HEADERS[:filesize]]) : 'ocn' + data[HEADERS[:oclc]]
       isbn             = data[HEADERS[:isbn]]
       date             = data[HEADERS[:date]]
       place            = data[HEADERS[:place]]
@@ -198,7 +223,8 @@ class OverdriveMetadata
   		title_f = make_data_field('245', t_ind1, t_ind2, title)
       append_subfield title_f, 'h', GMD + ' /'
   		unless sor.empty?
-  			append_subfield title_f, 'c', 'by ' + sor + '.'
+        value = sor[-1] == '.' ? "by #{sor}" : "by #{sor}."
+  			append_subfield title_f, 'c', value
       else
         title_f['h'].gsub!(/\s+\/$/, '.')
   		end
@@ -253,7 +279,8 @@ class OverdriveMetadata
 
     def normalize_author(author)
   		return author if author.empty?
-  		names    = author.split ' '
+  		author   = author.split(',')[0]
+      names    = author.split ' '
   		surname  = names.last + ', '
   		fullname = surname + names[0 .. names.length - 2].join(' ')
   		fullname += '.' unless fullname[-1] == '.'
