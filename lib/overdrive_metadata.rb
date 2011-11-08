@@ -6,6 +6,10 @@ require 'spreadsheet'
 ##
 # Class to generate marc records from Overdrive provided metadata spreadsheet
 # Works for e-audiobooks only at present ...
+# Usage:
+# metadata = OverdriveMetadata.new('path/to/data.xls')
+# records = metadata.map
+# records.each { |r| puts r['245']['a'] } # do something with records ...
 
 class OverdriveMetadata
   	VERSION = '1.0.0'
@@ -72,18 +76,13 @@ class OverdriveMetadata
       end
       isbns.delete_if { |k,v| v < 2 }
       isbns.keys.each do |isbn|
-        puts isbn
         rcds = @records.find_all { |r| r['020']['a'] == isbn if r['020'] }
-        puts 'SIZE: ' + rcds.size.to_s
         raise 'Found invalid number of duplicate records: ' + isbn unless rcds.size == 2
         file_note = rcds[1].find { |f| f.tag == '500' and f['a'] =~ /OverDrive (WMA|MP3) Audiobook/ }
         excerpt   = rcds[1].find { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }
         raise 'Unable to identify format note and excerpt: ' + isbn unless file_note and excerpt
         rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '500' }, file_note)
         rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }, excerpt)
-        # rcds[0].append file_note
-        # rcds[0].append excerpt
-        # rcds[0].fields.sort_by! {|f| f.tag.to_i }
         @records.delete rcds[1]
       end
       @records
