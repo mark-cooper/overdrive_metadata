@@ -7,9 +7,19 @@ require 'spreadsheet'
 # Class to generate marc records from Overdrive provided metadata spreadsheet
 # Works for e-audiobooks only at present ...
 # Usage:
-# metadata = OverdriveMetadata.new('path/to/data.xls')
+# require 'overdrive_metadata'
+# metadata = OverdriveMetadata.new('spreadsheets/111111.xls')
 # records = metadata.map
-# records.each { |r| puts r['245']['a'] } # do something with records ...
+# puts "R: " + records.size.to_s # print number of records generated to console
+# w = MARC::Writer.new('generated.mrc')
+# records.each do |r|
+#   begin
+#     w.write r
+#   rescue
+#     puts "FAILED: " + r['245']['a']
+#   end
+# end
+# w.close
 
 class OverdriveMetadata
   	VERSION = '1.0.0'
@@ -18,14 +28,16 @@ class OverdriveMetadata
 
     GMD      = '[electronic resource]'
     ISBN_AUD = '(sound recording : OverDrive Audio Book)'
+    OD_URL   = 'http://www.overdrive.com'
+    AGENCY   = 'JTH' # Sonoma County Library
     ACCESS   = 'Mode of access: World Wide Web.'
-    DISCLAIM = 'Record generated from Overdrive metadata spreadsheet.'
+    DOWN_SH  = 'Downloadable audiobooks'
     URL_MSG  = 'Click to download this audiobook.'
-    DOWN_SH  = 'Downloadable audiobooks.'
+    DISCLAIM = 'Record generated from Overdrive metadata spreadsheet.'
 
     READ_ERR = 'Error, close file, check file path or try resaving file as .xls (not xml)'
     TITL_ERR = 'Title field is missing from data row'
-    DATE_ERR = 'Date data not present for row'
+    DATE_ERR = 'Date information not present for row'
     FIXF_ERR = 'Invalid fixed field created'
 
     # add option for config. file in future 
@@ -89,10 +101,7 @@ class OverdriveMetadata
     end
 
   	def create_record(data)
-  		record = MARC::Record.new
-  		
-      oclc             = data[HEADERS[:oclc]].to_s.empty? ? 'ovr' + make_id(data[HEADERS[:filesize]]) : 'ocn' + data[HEADERS[:oclc]]
-      isbn             = data[HEADERS[:isbn]]
+  		isbn             = data[HEADERS[:isbn]]
       date             = data[HEADERS[:date]]
       place            = data[HEADERS[:place]]
       publisher        = data[HEADERS[:publisher]]
@@ -117,14 +126,7 @@ class OverdriveMetadata
       excerpt          = data[HEADERS[:excerpt]]
       thumb            = data[HEADERS[:thumb]]
       cover            = data[HEADERS[:cover]]
-
-      # leader - accept hash in future
-      ldr = record.leader
-      ldr[5]  = 'n'
-      ldr[6]  = 'i'
-      ldr[7]  = 'm'
-      ldr[17] = 'M'
-      ldr[18] = 'a'
+      oclc             = data[HEADERS[:oclc]].to_s.empty? ? 'ovr' + make_id(data[HEADERS[:filesize]], mn, sc) : 'ocn' + data[HEADERS[:oclc]]
       
       begin
         fields = []
@@ -135,8 +137,8 @@ class OverdriveMetadata
         fields << make_control_field('008', make_fixed_field(year, month, day, litf))
 
     		fields << make_data_field('020', ' ', ' ', isbn + ' ' + ISBN_AUD) unless isbn.empty?
-        fields << make_data_field('037', ' ', ' ', 'OverDrive, Inc.', 'b')
-        fields << make_source('JTH')
+        fields << make_acq_src(OD_URL)
+        fields << make_source(AGENCY)
     		
     		fields << make_data_field('100', '1', ' ', normalize_author(author))
         fields << make_title(title, author)
@@ -155,7 +157,7 @@ class OverdriveMetadata
         fields << make_data_field('500', ' ', ' ', 'Duration: ' + hr + ' hr., ' + mn + ' min.')
 
         subjects.each { |s| fields << make_subject(@coder.decode(s)) }
-        fields << make_dlc_sh
+        fields << make_subject(DOWN_SH)
 
         fields << make_data_field('700', '1', ' ', normalize_author(reader))
 
@@ -167,7 +169,17 @@ class OverdriveMetadata
         fields << make_data_field('991', ' ', ' ', DISCLAIM)
 
     		fields.compact! # remove nil fields
-    		fields.each { |f| record.append f } # add fields to record
+    		
+        record = MARC::Record.new
+        fields.each { |f| record.append f } # add fields to record
+
+        # leader - accept hash in future
+        ldr = record.leader
+        ldr[5]  = 'n'
+        ldr[6]  = 'i'
+        ldr[7]  = 'm'
+        ldr[17] = 'M'
+        ldr[18] = 'a'
 
     		return record
       rescue Exception => ex
@@ -179,8 +191,8 @@ class OverdriveMetadata
     ##
     # Generate a id no.
 
-    def make_id(partial)
-      return partial + Time.now.to_f.to_s.split('.')[1]
+    def make_id(*values)
+      return values.join
     end
 
   	def make_control_field(tag, value)
@@ -207,6 +219,12 @@ class OverdriveMetadata
       fixed_field[30] = litf
       raise FIXF_ERR unless fixed_field.length == 40
       return fixed_field
+    end
+
+    def make_acq_src(url)
+      src_f = make_data_field('037', ' ', ' ', 'OverDrive, Inc.', 'b')
+      append_subfield src_f, 'n', url
+      return src_f
     end
 
     def make_source(agency)
@@ -251,23 +269,16 @@ class OverdriveMetadata
       return subj_f
     end
 
-    # cludgy, fix later ...
-    def make_dlc_sh
-      dlc_f = make_data_field('655', ' ', '7', DOWN_SH)
-      append_subfield dlc_f, '2', 'local'
-      return dlc_f
-    end
-
     def make_link(url, message)
       return nil if url.empty?
-      link_f = make_data_field('856', '4', '0', url)
+      link_f = make_data_field('856', '4', '0', url, 'u')
       append_subfield link_f, 'y', message
       return link_f
     end
 
     def make_img_link(title, cover, thumb)
       return nil if cover.empty? or thumb.empty?
-      img_f = make_data_field('856', '4', '2', cover)
+      img_f = make_data_field('856', '4', '2', cover, 'u')
       append_subfield img_f, 'y', "<img class=\"scl_mwthumb\" src=\"#{thumb}\" alt=\"Artwork for this title - #{title}\" />"
       return img_f
     end
