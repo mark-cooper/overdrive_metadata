@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{overdrive_metadata}
-  s.version = "1.0.0.20111109092909"
+  s.version = "1.0.0.20111118131735"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Mark Cooper"]
-  s.date = %q{2011-11-09}
+  s.date = %q{2011-11-18}
   s.description = %q{FIX (describe your package)}
   s.email = ["markchristophercooper@gmail.com"]
   s.extra_rdoc_files = ["History.txt", "Manifest.txt", "README.txt"]
