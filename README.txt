@@ -1,41 +1,46 @@
 = overdrive_metadata
 
-http://www.librodoor.net
+http://www.libcode.net
 
 == DESCRIPTION:
 
-FIX (describe your package)
+Generate marc records from Overdrive provided metadata spreadsheets.
 
 == FEATURES/PROBLEMS:
 
-* FIX (list of features or problems)
+Have yet to see a Kindle eBook sample - may require tinkering.
 
 == SYNOPSIS:
 
-  FIX (code sample of usage)
+require 'overdrive_metadata'
+records = OverdriveMetadata.new('spreadsheets/111111.xls')
+puts "R: " + records.size.to_s # print number of records generated to console
+w = MARC::Writer.new('generated.mrc')
+records.each do |r|
+  begin
+    w.write r
+  rescue
+    puts "FAILED: " + r['245']['a']
+  end
+end
+w.close
 
 == REQUIREMENTS:
 
-* FIX (list of requirements)
+htmlentities
+marc
+sanitize
+spreadsheet
 
 == INSTALL:
 
-* FIX (sudo gem install, anything else)
-
-== DEVELOPERS:
-
-After checking out the source, run:
-
-  $ rake newb
-
-This task will install any missing dependencies, run the tests/specs,
-and generate the RDoc.
+sudo gem install overdrive_metadata
 
 == LICENSE:
 
 (The MIT License)
 
-Copyright (c) 2011 FIX
+Copyright (c) 2011 Mark Cooper
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
