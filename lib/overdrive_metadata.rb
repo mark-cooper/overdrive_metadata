@@ -8,7 +8,7 @@ require 'spreadsheet'
 # Usage:
 # require 'overdrive_metadata'
 # records = OverdriveMetadata.new('spreadsheets/111111.xls')
-# puts "R: " + records.size # print number of records generated to console
+# puts "R: " + records.size.to_s # print number of records generated to console
 # w = MARC::Writer.new('generated.mrc')
 # records.each do |r|
 #   begin
