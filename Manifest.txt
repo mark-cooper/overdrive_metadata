@@ -1,8 +1,0 @@
-.autotest
-History.txt
-Manifest.txt
-README.txt
-Rakefile
-lib/overdrive_metadata.rb
-raw/test.xls
-test/test_overdrive_metadata.rb

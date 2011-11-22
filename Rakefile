@@ -1,13 +1,28 @@
 # -*- ruby -*-
 
-require 'rubygems'
-require 'hoe'
+require 'rake/testtask'
 
-Hoe.plugin :gemspec
-Hoe.plugin :git
+desc "Validate the gemspec"
+task :gemspec do
+  	gemspec.validate
+end
 
-Hoe.spec 'overdrive_metadata' do
-	developer('Mark Cooper', 'markchristophercooper@gmail.com')
+desc "Build gem locally"
+task :build => :gemspec do
+	system "gem build #{gemspec.name}.gemspec"
+	FileUtils.mkdir_p "pkg"
+	FileUtils.mv "#{gemspec.name}-#{gemspec.version}.gem", "pkg"
+end
+
+desc "Install gem locally"
+task :install => :build do
+  	system "gem install pkg/#{gemspec.name}-#{gemspec.version}"
+end
+
+Rake::TestTask.new do |t|
+	t.libs << "test"
+	t.test_files = FileList['test/test*.rb']
+	t.verbose = true
 end
 
 # vim: syntax=ruby
