@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   # files
   s.files = `git ls-files`.split("\n")
   s.test_files = `git ls-files test`.split("\n")
-  s.extra_rdoc_files = ["History.txt", "Manifest.txt", "README.txt"]
+  s.extra_rdoc_files = ["README.txt"]
   s.rdoc_options = ["--main", "README.txt"]
 
   Dir["bin/*"].map(&File.method(:basename))
