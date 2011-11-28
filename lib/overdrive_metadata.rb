@@ -6,6 +6,7 @@ require 'spreadsheet'
 ##
 # Class to generate marc records from Overdrive provided metadata spreadsheet
 # Usage:
+# # Remove the header of the Overdrive spreadsheet and save it as .xls (not xml)
 # require 'overdrive_metadata'
 # records = OverdriveMetadata.new('spreadsheets/111111.xls')
 # puts "R: " + records.size.to_s # print number of records generated to console
@@ -20,7 +21,7 @@ require 'spreadsheet'
 # w.close
 
 class OverdriveMetadata
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
 
     attr_reader :records
 
@@ -58,24 +59,26 @@ class OverdriveMetadata
 
     def initialize(metadata_file)
         begin   
-        @metadata = Spreadsheet.open(metadata_file).worksheet 0
-        @coder    = HTMLEntities.new
-        @records  = []
-        map
-        merge_by_isbn
+          @metadata = Spreadsheet.open(metadata_file).worksheet 0
         rescue Exception => ex
             raise READ_ERR
         end
+        @coder    = HTMLEntities.new
+        @records  = []
+        @count    = 0
+        map
     end
 
     def map
         @metadata.each do |row|
             @records << create_record(row)
         end
-      @records.compact
+      @records.compact!
+      merge_by_isbn
     end
 
     def create_record(data)
+      @count += 1
       field = package_data(data)
       r = field[:format].match(/#{DEF_FORMAT}/) ? EBook.new : EAudioBook.new
       begin
@@ -109,7 +112,7 @@ class OverdriveMetadata
         r.make_data_field('991', ' ', ' ', {'a' => DISCLAIM})
         return r.record
       rescue Exception => ex
-        puts ex.message
+        puts @count.to_s + ': ' + ex.message
         nil
       end
     end
@@ -151,6 +154,7 @@ class OverdriveMetadata
     end
 
     def merge_by_isbn
+        puts 'Merging (may take a while on large record sets) ...'
         isbns = Hash.new(0)
         @records.each do |record|
           isbns[record['020'].value] += 1 if record['020']
@@ -162,9 +166,13 @@ class OverdriveMetadata
           file_note = rcds[1].find { |f| f.tag == '500' and f['a'] =~ /OverDrive (WMA|MP3) Audiobook/ }
           excerpt   = rcds[1].find { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }
           if file_note and excerpt
-            rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '500' }, file_note)
-            rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }, excerpt)
-            @records.delete rcds[1]
+            begin
+              rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '500' }, file_note)
+              rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }, excerpt)
+              @records.delete rcds[1]
+            rescue Exception => ex
+              puts isbn + ': ' + 'failed to merge'
+            end
           end
         end
         @records

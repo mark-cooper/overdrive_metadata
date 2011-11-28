@@ -12,6 +12,7 @@ Have yet to see a Kindle eBook sample - may require tinkering.
 
 == SYNOPSIS:
 
+# Remove the header of the Overdrive spreadsheet and save it as .xls (not xml)
 require 'overdrive_metadata'
 records = OverdriveMetadata.new('spreadsheets/111111.xls')
 puts "R: " + records.size.to_s # print number of records generated to console
