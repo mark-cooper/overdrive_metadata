@@ -18,7 +18,7 @@ require 'spreadsheet'
 # w.close
 
 class OverdriveMetadata
-    VERSION = '1.0.2.1'
+    VERSION = '1.0.2.2'
 
     attr_reader :records
 
@@ -190,7 +190,7 @@ class OverdriveMetadata
     end
 
     def clean_string(input_str)
-        return input_str.gsub(/&lt;.*&gt;/, '').gsub(/&quot;/, '"').gsub(/&apos;/, "'").gsub(/&#160;/, '').gsub(/&#235;/, 'e').gsub(/<\/?[^>]*>/, '').gsub(/\s{2}+/, ' ').strip rescue ''
+        return input_str.gsub(/&lt;.*&gt;/, '').gsub(/&amp;/, '&').gsub(/&quot;/, '"').gsub(/&apos;/, "'").gsub(/&#160;/, '').gsub(/&#235;/, 'e').gsub(/<\/?[^>]*>/, '').gsub(/\s{2}+/, ' ').strip rescue ''
     end
 
     # Quickly turn 325645 {kb} into 318 {mb} etc. + 1 so not 0
