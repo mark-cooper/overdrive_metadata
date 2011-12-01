@@ -18,7 +18,7 @@ require 'spreadsheet'
 # w.close
 
 class OverdriveMetadata
-    VERSION = '1.0.2'
+    VERSION = '1.0.2.1'
 
     attr_reader :records
 
