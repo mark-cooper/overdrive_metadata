@@ -98,7 +98,7 @@ class OverdriveMetadata
         r.make_data_field('500', ' ', ' ', {'a' => "Title from: #{field[:title_src]}."})
         r.make_data_field('500', ' ', ' ', {'a' => 'Unabridged.'}) if r.is_a? EAudioBook
         r.make_data_field('500', ' ', ' ', {'a' => "Duration: #{field[:hours]} hr., #{field[:minutes]} min."}) if r.is_a? EAudioBook
-        field[:subjects].each { |s| r.make_data_field('655', ' ', '7', {'a' => s.strip + '.', '2' => 'local'}) }
+        field[:subjects].each { |s| r.make_data_field('655', ' ', '7', {'a' => clean_string(s).strip + '.', '2' => 'local'}) }
         r.make_data_field('655', ' ', '7', {'a' => r.subject, '2' => 'local'})
         r.make_data_field('700', '1', ' ', {'a' => normalize_author(field[:reader])})
         r.make_data_field('856', '4', '0', {'u' => field[:download], 'y' => URL_MSG})
