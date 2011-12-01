@@ -5,7 +5,7 @@ require "base64"
 
 Gem::Specification.new do |s|
   s.name = %q{overdrive_metadata}
-  s.version = "1.0.1"
+  s.version = '1.0.2'
   s.authors = ["Mark Cooper"]
   s.date = %q{2011-11-22}
   s.homepage = %q{http://www.libcode.net}
@@ -30,9 +30,6 @@ Gem::Specification.new do |s|
   s.required_ruby_version = ::Gem::Requirement.new("~> 1.9")
 
   # dependencies
-  # RubyGems has runtime dependencies (add_dependency) and
-  # development dependencies (add_development_dependency)
-  s.add_development_dependency "simple-templater", ">= 0.0.1.2"
   s.add_development_dependency "bundler"
 
   begin

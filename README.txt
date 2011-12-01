@@ -8,6 +8,9 @@ Generate marc records from Overdrive provided metadata spreadsheets.
 
 == FEATURES/PROBLEMS:
 
+Most problems encountered owe to missing values in the Overdrive spreadsheet. 
+These are mostly handled defensively but missing values in the spreadsheet 
+may create unhandled exceptions in some cases.
 Have yet to see a Kindle eBook sample - may require tinkering.
 
 == SYNOPSIS:
@@ -28,9 +31,7 @@ w.close
 
 == REQUIREMENTS:
 
-htmlentities
 marc
-sanitize
 spreadsheet
 
 == INSTALL:

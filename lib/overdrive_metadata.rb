@@ -1,9 +1,6 @@
-require 'htmlentities'
 require 'marc'
-require 'sanitize'
 require 'spreadsheet'
 
-##
 # Class to generate marc records from Overdrive provided metadata spreadsheet
 # Usage:
 # # Remove the header of the Overdrive spreadsheet and save it as .xls (not xml)
@@ -21,7 +18,7 @@ require 'spreadsheet'
 # w.close
 
 class OverdriveMetadata
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
 
     attr_reader :records
 
@@ -63,7 +60,6 @@ class OverdriveMetadata
         rescue Exception => ex
             raise READ_ERR
         end
-        @coder    = HTMLEntities.new
         @records  = []
         @count    = 0
         map
@@ -74,7 +70,7 @@ class OverdriveMetadata
             @records << create_record(row)
         end
       @records.compact!
-      merge_by_isbn
+      merge_by_content_url
     end
 
     def create_record(data)
@@ -102,7 +98,7 @@ class OverdriveMetadata
         r.make_data_field('500', ' ', ' ', {'a' => "Title from: #{field[:title_src]}."})
         r.make_data_field('500', ' ', ' ', {'a' => 'Unabridged.'}) if r.is_a? EAudioBook
         r.make_data_field('500', ' ', ' ', {'a' => "Duration: #{field[:hours]} hr., #{field[:minutes]} min."}) if r.is_a? EAudioBook
-        field[:subjects].each { |s| r.make_data_field('655', ' ', '7', {'a' => @coder.decode(s).strip + '.', '2' => 'local'}) }
+        field[:subjects].each { |s| r.make_data_field('655', ' ', '7', {'a' => s.strip + '.', '2' => 'local'}) }
         r.make_data_field('655', ' ', '7', {'a' => r.subject, '2' => 'local'})
         r.make_data_field('700', '1', ' ', {'a' => normalize_author(field[:reader])})
         r.make_data_field('856', '4', '0', {'u' => field[:download], 'y' => URL_MSG})
@@ -112,7 +108,7 @@ class OverdriveMetadata
         r.make_data_field('991', ' ', ' ', {'a' => DISCLAIM})
         return r.record
       rescue Exception => ex
-        puts @count.to_s + ': ' + ex.message
+        puts @count.to_s + ': ' + "#{ex.message}\n" + ex.backtrace[0..2].join("\n")
         nil
       end
     end
@@ -136,33 +132,34 @@ class OverdriveMetadata
       values[:hours]            = hr ? hr : ''
       values[:minutes]          = mn ? mn : ''
       values[:seconds]          = sc ? sc : ''
-      values[:author]           = @coder.decode(data[HEADERS[:author]])
-      values[:title]            = @coder.decode(data[HEADERS[:title]])
+      values[:author]           = clean_string data[HEADERS[:author]]
+      values[:title]            = clean_string data[HEADERS[:title]]
       values[:title_src]        = data[HEADERS[:title_src]]
-      values[:reader]           = @coder.decode(data[HEADERS[:reader]])
+      values[:reader]           = clean_string data[HEADERS[:reader]]
       values[:requires]         = data[HEADERS[:requires]]
       values[:format]           = data[HEADERS[:format]]
       values[:filesize]         = kb_to_mb(data[HEADERS[:filesize]])
-      values[:summary]          = Sanitize.clean(@coder.decode(data[HEADERS[:summary]])).gsub(/\s{2}+/, '').strip
-      values[:subjects]         = data[HEADERS[:subjects]].split ','
+      values[:summary]          = clean_string data[HEADERS[:summary]]
+      values[:subjects]         = data[HEADERS[:subjects]].split(',') rescue []
       values[:download]         = data[HEADERS[:download]]
       values[:excerpt]          = data[HEADERS[:excerpt]]
       values[:thumb]            = data[HEADERS[:thumb]]
       values[:cover]            = data[HEADERS[:cover]]
       values[:oclc]             = data[HEADERS[:oclc]].to_s.empty? ? 'ovr' + make_id(values[:download]) : 'ocn' + data[HEADERS[:oclc]]
+      values.each { |k, v| values[k] = '' if v.nil? }
       return values
     end
 
-    def merge_by_isbn
+    def merge_by_content_url
         puts 'Merging (may take a while on large record sets) ...'
-        isbns = Hash.new(0)
+        content_url = Hash.new(0)
         @records.each do |record|
-          isbns[record['020'].value] += 1 if record['020']
+          content_url[record['856']['u']] += 1
         end
-        isbns.delete_if { |k,v| v < 2 }
-        isbns.keys.each do |isbn|
-          rcds = @records.find_all { |r| r['020']['a'] == isbn if r['020'] }
-          raise 'Found invalid number of duplicate records: ' + isbn unless rcds.size == 2
+        content_url.delete_if { |k,v| v < 2 }
+        content_url.keys.each do |url|
+          rcds = @records.find_all { |r| r['856']['u'] == url }
+          raise 'Found invalid number of duplicate records: ' + url unless rcds.size == 2
           file_note = rcds[1].find { |f| f.tag == '500' and f['a'] =~ /OverDrive (WMA|MP3) Audiobook/ }
           excerpt   = rcds[1].find { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }
           if file_note and excerpt
@@ -171,7 +168,7 @@ class OverdriveMetadata
               rcds[0].fields.insert(rcds[0].fields.index { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }, excerpt)
               @records.delete rcds[1]
             rescue Exception => ex
-              puts isbn + ': ' + 'failed to merge'
+              puts url + ': ' + 'failed to merge'
             end
           end
         end
@@ -192,7 +189,10 @@ class OverdriveMetadata
         return fullname
     end
 
-    ##
+    def clean_string(input_str)
+        return input_str.gsub(/&lt;.*&gt;/, '').gsub(/&quot;/, '"').gsub(/&apos;/, "'").gsub(/&#160;/, '').gsub(/&#235;/, 'e').gsub(/<\/?[^>]*>/, '').gsub(/\s{2}+/, ' ').strip rescue ''
+    end
+
     # Quickly turn 325645 {kb} into 318 {mb} etc. + 1 so not 0
 
     def kb_to_mb(size)
@@ -226,7 +226,7 @@ class OverdriveMetadata
       def make_data_field(tag, ind1, ind2, subfields)
         s = []
         subfields.each do |k,v|
-          return nil if v.empty?
+          return nil if v.nil? or v.empty?
           s << MARC::Subfield.new(k, v)
         end
         @record.append MARC::DataField.new(tag, ind1, ind2, *s)
