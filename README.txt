@@ -8,18 +8,25 @@ Generate marc records from Overdrive provided metadata spreadsheets.
 
 == FEATURES/PROBLEMS:
 
-Most problems encountered owe to missing values in the Overdrive spreadsheet. 
-These are mostly handled defensively but missing values in the spreadsheet 
-may create unhandled exceptions in some cases.
-Have yet to see a Kindle eBook sample - may require tinkering.
+Most problems encountered owe to missing values in the Overdrive spreadsheet.
+Updated to account for ebook formats.
+Records merges now apply to any number of records 
+(i.e. epub/kindle/pdf records with same content URL = 1 record)
+Now agency code must be passed in as second argument and headers are assumed to be present.
 
 == SYNOPSIS:
 
-# Remove the header of the Overdrive spreadsheet and save it as .xls (not xml)
 require 'overdrive_metadata'
-records = OverdriveMetadata.new('spreadsheets/111111.xls')
-puts "R: " + records.size.to_s # print number of records generated to console
+
+o = OverdriveMetadata.new('spreadsheets/111111.xls', 'JTH')
+# o = OverdriveMetadata.new('spreadsheets/111111.xls', 'JTH', false) # if no header
+records = o.map # this must be called to process the rows
+
+puts "Fields read: #{o.count.to_s}" # count of spreadsheet rows
+puts "R: #{records.size.to_s}" # print number of records generated to console
+
 w = MARC::Writer.new('generated.mrc')
+
 records.each do |r|
   begin
     w.write r
@@ -27,6 +34,7 @@ records.each do |r|
     puts "FAILED: " + r['245']['a']
   end
 end
+
 w.close
 
 == REQUIREMENTS:

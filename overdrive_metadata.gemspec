@@ -5,7 +5,7 @@ require "base64"
 
 Gem::Specification.new do |s|
   s.name = %q{overdrive_metadata}
-  s.version = '1.0.2.2'
+  s.version = '1.0.2.3'
   s.authors = ["Mark Cooper"]
   s.date = %q{2011-11-22}
   s.homepage = %q{http://www.libcode.net}
@@ -13,7 +13,6 @@ Gem::Specification.new do |s|
   
   s.summary = "Generate marc records from Overdrive provided metadata spreadsheets."
   s.description = "#{s.summary}"
-  s.cert_chain = nil
   s.has_rdoc = true
 
   # files
