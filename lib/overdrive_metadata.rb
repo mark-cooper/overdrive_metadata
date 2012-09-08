@@ -11,7 +11,7 @@ class OverdriveMetadata
   ACCESS     = 'Mode of access: World Wide Web.'
   URL_MSG    = 'Click to download this resource.'
   DISCLAIM   = 'Record generated from Overdrive metadata spreadsheet.'
-  READ_ERR   = 'Error, close file, check file path or try resaving file as .xls (not xml)'
+  READ_ERR   = 'Error reading spreadsheet! Close, verfiy location and ensure .xls'
 
   HEADERS = {
     :oclc      => 19,
@@ -37,7 +37,7 @@ class OverdriveMetadata
 
   def initialize(metadata_file, agency, header = true, ebook_regex = nil)
     begin
-      @metadata    = Spreadsheet.open(metadata_file).worksheet 0
+      @metadata = Spreadsheet.open(metadata_file).worksheet 0
     rescue Exception => ex
         raise READ_ERR
     end
@@ -46,6 +46,7 @@ class OverdriveMetadata
     @records     = []
     @count       = 0
     @header      = header
+    @content_rec = {}
   end
 
   def map
@@ -56,7 +57,6 @@ class OverdriveMetadata
       end
 
       begin
-        @count += 1
         @records << create_record(row)
       rescue Exception => ex
         puts "#{@count.to_s}\t#{ex.message}"
@@ -64,12 +64,27 @@ class OverdriveMetadata
       end
 
     end
+
     @records.compact!
-    merge_by_content_url
+    @records
   end
 
   def create_record(data)
+    @count += 1
     field = package_data(data)
+
+    if @content_rec.has_key? field[:download]
+      record  = @content_rec[field[:download]]
+      format  = MARC::DataField.new('500', ' ', ' ', ['a', "#{field[:format]} (file size: #{field[:filesize]} MB)."])
+      record.fields.insert(record.fields.index { |f| f.tag == '500' }, format)
+
+      unless field[:excerpt].empty?
+        excerpt = MARC::DataField.new('856', '4', '0', ['u', field[:excerpt]], ['y', "Excerpt (#{field[:format]})."])
+        record.fields.insert(record.fields.index { |f| f.tag == '856' }, excerpt)
+      end
+      return nil
+    end
+
     r = field[:format].match(/#{@ebook_regex}/i) ? EBook.new : EAudioBook.new
     r.make_control_field('001', field[:oclc])
     r.make_006
@@ -98,8 +113,8 @@ class OverdriveMetadata
     field[:subjects].each { |s| r.make_data_field('655', ' ', '7', {'a' => clean_string(s).strip + '.', '2' => 'local'}) }
     r.make_data_field('655', ' ', '7', {'a' => r.subject, '2' => 'local'})
     r.make_data_field('700', '1', ' ', {'a' => normalize_author(field[:reader])})
-    r.make_data_field('856', '4', '0', {'u' => field[:download], 'y' => URL_MSG})
     r.make_data_field('856', '4', '0', {'u' => field[:excerpt], 'y' => "Excerpt (#{field[:format]})."})
+    r.make_data_field('856', '4', '0', {'u' => field[:download], 'y' => URL_MSG})
     
     if @agency == 'JTH'
       r.make_data_field('856', '4', '2', {'u' => field[:cover], 'y' => "<img class=\"scl_mwthumb\" src=\"#{field[:thumb]}\" alt=\"Artwork for this title - #{field[:title].gsub(/[^A-Za-z ]/, '')}\" />"})
@@ -107,6 +122,8 @@ class OverdriveMetadata
     end
     
     r.make_data_field('991', ' ', ' ', {'a' => DISCLAIM})
+
+    @content_rec[field[:download]] = r.record
     return r.record
   end
 
@@ -148,34 +165,6 @@ class OverdriveMetadata
     return values
   end
 
-  def merge_by_content_url
-    puts 'Merging (may take a while on large record sets) ...'
-    content_url = Hash.new(0)
-    @records.each do |record|
-      content_url[record['856']['u']] += 1
-    end
-    content_url.delete_if { |k,v| v < 2 }
-    content_url.keys.each do |url|
-      rcds = @records.find_all { |r| r['856']['u'] == url }
-      base_rcd = rcds.shift
-
-      rcds.each do |r|
-        file_note = r['500'] # 1st 500 note field is format
-        excerpt   = r.find { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }
-        if file_note or excerpt
-          begin
-            base_rcd.fields.insert(base_rcd.fields.index { |f| f.tag == '500' }, file_note) if file_note
-            base_rcd.fields.insert(base_rcd.fields.index { |f| f.tag == '856' and f['y'] =~ /Excerpt/ }, excerpt) if excerpt
-            @records.delete r
-          rescue Exception => ex
-            puts "#{url}\tfailed to merge"
-          end
-        end
-      end
-    end
-    @records
-  end
-
   def make_id(id_string)
     return id_string[-9..-1].gsub(/\W/, '')
   end
@@ -193,8 +182,6 @@ class OverdriveMetadata
   def clean_string(input_str)
     return input_str.gsub(/&lt;.*&gt;/, '').gsub(/&amp;/, '&').gsub(/&quot;/, '"').gsub(/&apos;/, "'").gsub(/&#160;/, '').gsub(/&#235;/, 'e').gsub(/<\/?[^>]*>/, '').gsub(/\s{2}+/, ' ').strip rescue ''
   end
-
-  # Quickly turn 325645 {kb} into 318 {mb} etc. + 1 so not 0
 
   def kb_to_mb(size)
     return (size.to_f / 1024 + 1).to_i.to_s

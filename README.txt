@@ -8,10 +8,9 @@ Generate marc records from Overdrive provided metadata spreadsheets.
 
 == FEATURES/PROBLEMS:
 
-Most problems encountered owe to missing values in the Overdrive spreadsheet.
+Much faster than previous versions -- no batch merging.
+Fields are appended to a single record for rows with matching content urls.
 Updated to account for ebook formats.
-Records merges now apply to any number of records 
-(i.e. epub/kindle/pdf records with same content URL = 1 record)
 Now agency code must be passed in as second argument and headers are assumed to be present.
 
 == SYNOPSIS:
@@ -22,7 +21,7 @@ o = OverdriveMetadata.new('spreadsheets/111111.xls', 'JTH')
 # o = OverdriveMetadata.new('spreadsheets/111111.xls', 'JTH', false) # if no header
 records = o.map # this must be called to process the rows
 
-puts "Fields read: #{o.count.to_s}" # count of spreadsheet rows
+puts "Fields read: #{o.count.to_s}" # count of spreadsheet rows processed
 puts "R: #{records.size.to_s}" # print number of records generated to console
 
 w = MARC::Writer.new('generated.mrc')
