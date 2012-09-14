@@ -11,7 +11,7 @@ class OverdriveMetadata
   ACCESS     = 'Mode of access: World Wide Web.'
   URL_MSG    = 'Click to download this resource.'
   DISCLAIM   = 'Record generated from Overdrive metadata spreadsheet.'
-  READ_ERR   = 'Error reading spreadsheet! Close, verfiy location and ensure .xls'
+  READ_ERR   = 'Error reading spreadsheet! Ensure file is closed, verfiy location and save as XLS'
 
   HEADERS = {
     :oclc      => 19,
@@ -117,7 +117,9 @@ class OverdriveMetadata
     r.make_data_field('856', '4', '0', {'u' => field[:download], 'y' => URL_MSG})
     
     if @agency == 'JTH'
-      r.make_data_field('856', '4', '2', {'u' => field[:cover], 'y' => "<img class=\"scl_mwthumb\" src=\"#{field[:thumb]}\" alt=\"Artwork for this title - #{field[:title].gsub(/[^A-Za-z ]/, '')}\" />"})
+      if r.is_a? EAudioBook
+        r.make_data_field('856', '4', '2', {'u' => field[:cover], 'y' => "<img class=\"scl_mwthumb\" src=\"#{field[:thumb]}\" alt=\"Artwork for this title - #{field[:title].gsub(/[^A-Za-z ]/, '')}\" />"})
+      end
       r.make_data_field('907', ' ', ' ', {'a' => 'ER'})
     end
     
