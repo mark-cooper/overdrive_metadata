@@ -2,7 +2,7 @@ require 'marc'
 require 'spreadsheet'
 
 class OverdriveMetadata
-  VERSION = '1.0.2.4'
+  VERSION = '1.0.2.5'
 
   attr_reader :records, :count
 
