@@ -11,7 +11,7 @@ class OverdriveMetadata
   ACCESS     = 'Mode of access: World Wide Web.'
   URL_MSG    = 'Click to download this resource.'
   DISCLAIM   = 'Record generated from Overdrive metadata spreadsheet.'
-  READ_ERR   = 'Error reading spreadsheet! Ensure file is closed, verfiy location and save as XLS'
+  READ_ERR   = 'Error reading spreadsheet! Ensure file is closed, verify location and save as XLS'
 
   HEADERS = {
     :oclc      => 19,
