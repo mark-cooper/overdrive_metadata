@@ -2,7 +2,7 @@ require 'marc'
 require 'spreadsheet'
 
 class OverdriveMetadata
-  VERSION = '1.0.2.3'
+  VERSION = '1.0.2.4'
 
   attr_reader :records, :count
 
@@ -59,7 +59,9 @@ class OverdriveMetadata
       begin
         @records << create_record(row)
       rescue Exception => ex
-        puts "#{@count.to_s}\t#{ex.message}"
+        puts "Row #{@count.to_s}\t#{ex.message}"
+        puts "#{ex.backtrace[0]}"
+        puts
         next
       end
 
@@ -96,7 +98,7 @@ class OverdriveMetadata
     r.make_data_field('100', '1', ' ', {'a' => normalize_author(field[:author])})
     r.make_title(field[:title], field[:author])
     r.make_publication(field[:place], field[:publisher], field[:year])
-    r.make_physical(field[:hours], field[:minutes])
+    r.make_physical(field[:hours], field[:minutes]) # ebooks will ignore
     r.make_data_field('306', ' ', ' ', {'a' => field[:hours] + field[:minutes] + field[:seconds]})
     r.make_data_field('538', ' ', ' ', {'a' => ACCESS})
     r.make_data_field('538', ' ', ' ', {'a' => 'Requires ' + field[:requires] + '.'})  
@@ -145,7 +147,7 @@ class OverdriveMetadata
     end
     values[:year]             = values[:date].match(/\d{4}/).to_s unless year # fall-back
     values[:time]             = data[HEADERS[:time]]
-    hr, mn, sc                = values[:time].split ':'
+    hr, mn, sc                = values[:time].split ':' rescue ''
     values[:hours]            = hr ? hr : ''
     values[:minutes]          = mn ? mn : ''
     values[:seconds]          = sc ? sc : ''

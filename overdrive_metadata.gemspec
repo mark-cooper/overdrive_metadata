@@ -5,7 +5,7 @@ require "base64"
 
 Gem::Specification.new do |s|
   s.name = %q{overdrive_metadata}
-  s.version = '1.0.2.3'
+  s.version = '1.0.2.4'
   s.authors = ["Mark Cooper"]
   s.date = %q{2011-11-22}
   s.homepage = %q{http://www.libcode.net}
