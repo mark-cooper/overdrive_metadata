@@ -9,6 +9,9 @@ Generate marc records from Overdrive provided metadata spreadsheets.
 
 == FEATURES/PROBLEMS:
 
+Important! Open and save the spreadsheet provided by Overdrive as a plain .xls (2003).
+By default they come as an XML XLS which is unreadable by the Ruby spreadsheet library.
+
 Much faster than previous versions -- no batch merging.
 Fields are appended to a single record for rows with matching content urls.
 Updated to account for ebook formats.
