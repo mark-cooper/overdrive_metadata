@@ -1,6 +1,7 @@
 = overdrive_metadata
 
 http://www.libcode.net
+https://github.com/mark-cooper/overdrive_metadata
 
 == DESCRIPTION:
 
@@ -18,21 +19,22 @@ Now agency code must be passed in as second argument and headers are assumed to 
 require 'overdrive_metadata'
 
 o = OverdriveMetadata.new('spreadsheets/111111.xls', 'JTH')
-# o = OverdriveMetadata.new('spreadsheets/111111.xls', 'JTH', false) # if no header
+
+OR
+
+o = OverdriveMetadata.new('spreadsheets/111111.xls', 'JTH', false) # if no header
+
 records = o.map # this must be called to process the rows
 
-puts "Fields read: #{o.count.to_s}" # count of spreadsheet rows processed
-puts "R: #{records.size.to_s}" # print number of records generated to console
+# count of spreadsheet rows processed
+puts "Number of fields read: #{o.count.to_s}"
+
+# print number of records generated to console
+puts "Number of records: #{records.size.to_s}"
 
 w = MARC::Writer.new('generated.mrc')
 
-records.each do |r|
-  begin
-    w.write r
-  rescue
-    puts "FAILED: " + r['245']['a']
-  end
-end
+records.each { |r| w.write r }
 
 w.close
 
