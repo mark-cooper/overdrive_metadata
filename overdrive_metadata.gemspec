@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
   s.files = `git ls-files`.split("\n")
   s.test_files = `git ls-files test`.split("\n")
   s.rdoc_options = ["--main"]
+  s.extra_rdoc_files = ["README.txt"]
 
   Dir["bin/*"].map(&File.method(:basename))
   # s.default_executable = "overdrive_metadata"
